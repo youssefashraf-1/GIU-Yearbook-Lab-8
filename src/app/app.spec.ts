@@ -1,17 +1,22 @@
 /* FILE: app.spec.ts
    WHAT: Verify the yearbook shell rather than the unused CLI welcome page.
    WHY: RouterLink in the header needs a router in the test environment. */
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { EMPTY } from 'rxjs';
 import { App } from './app';
+import { AuthService } from './services/auth.service';
+import { SavedService } from './services/saved.service';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { isLoggedIn: () => false, checkSession: () => EMPTY } },
+        { provide: SavedService, useValue: { count: () => 0 } },
+      ],
     }).compileComponents();
   });
 

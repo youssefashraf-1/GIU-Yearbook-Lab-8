@@ -1,12 +1,11 @@
 /* FILE: pages/students-page/students-page.spec.ts
    WHAT: Exercise the directory with representative student data.
    WHY: The new card must preserve search, filtering, sorting and data states. */
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { EMPTY, of, Subject, throwError } from 'rxjs';
 import { StudentsPage } from './students-page';
+import { AuthService } from '../../services/auth.service';
 import { StudentService } from '../../services/student.service';
 import { provideStore, provideState } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
@@ -48,8 +47,7 @@ describe('StudentsPage', () => {
       imports: [StudentsPage, App],
       providers: [
         provideRouter(routes),
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        { provide: AuthService, useValue: { isLoggedIn: () => false, checkSession: () => EMPTY } },
         provideStore(),
         provideState(studentsFeature),
         provideEffects({ loadStudents }),
@@ -187,5 +185,4 @@ describe('StudentsPage', () => {
     expect(page.querySelector('h1')?.textContent).toBe('Student not found');
     expect(service.getStudents).toHaveBeenCalledTimes(1);
   });
-
 });

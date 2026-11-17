@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { StudentCard } from './student-card';
 import { Student } from '../../models/student.model';
+import { SavedService } from '../../services/saved.service';
 import { PlaceholderPage } from '../../pages/placeholder-page/placeholder-page';
 
 const maya: Student = {
@@ -20,23 +21,31 @@ const maya: Student = {
 describe('StudentCard', () => {
   let fixture: ComponentFixture<StudentCard>;
   let element: HTMLElement;
+  const saved = { isSaved: vi.fn<(id: number) => boolean>(), toggle: vi.fn() };
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  beforeEach(() => {
+    saved.isSaved.mockReset().mockReturnValue(false);
+    saved.toggle.mockReset();
+    TestBed.configureTestingModule({
       imports: [StudentCard],
       providers: [
         provideRouter([
           { path: 'students/:id', component: PlaceholderPage, data: { title: 'Student story' } },
         ]),
+        { provide: SavedService, useValue: saved },
       ],
-    }).compileComponents();
+    });
+  });
+
+  async function render(): Promise<void> {
     fixture = TestBed.createComponent(StudentCard);
     fixture.componentRef.setInput('student', maya);
     await fixture.whenStable();
     element = fixture.nativeElement;
-  });
+  }
 
-  it('renders the student details and accessible portrait', () => {
+  it('renders the student details and accessible portrait', async () => {
+    await render();
     expect(element.querySelector('h3')?.textContent).toBe(maya.name);
     expect(element.querySelector('.card__meta')?.textContent).toBe('Engineering · Class of 2028');
     expect(element.querySelector('.card__quote')?.textContent).toBe(`“${maya.quote}”`);
@@ -48,6 +57,7 @@ describe('StudentCard', () => {
   });
 
   it('navigates to the student story through the whole-card link', async () => {
+    await render();
     const link = element.querySelector('a')!;
     expect(link.getAttribute('href')).toBe('/students/1');
     expect(link.getAttribute('aria-label')).toBe('Read the story of Maya Hassan');
@@ -56,7 +66,35 @@ describe('StudentCard', () => {
     expect(TestBed.inject(Router).url).toBe('/students/1');
   });
 
+  it('shows a filled heart for a saved student', async () => {
+    saved.isSaved.mockReturnValue(true);
+    await render();
+
+    const heart = element.querySelector<HTMLButtonElement>('.card__save')!;
+    expect(saved.isSaved).toHaveBeenCalledWith(maya.id);
+    expect(heart.getAttribute('aria-pressed')).toBe('true');
+    expect(heart.classList.contains('card__save--on')).toBe(true);
+  });
+
+  it('toggles the selected student without activating the card link', async () => {
+    await render();
+    const router = TestBed.inject(Router);
+    const initialUrl = router.url;
+    const cardClicked = vi.fn();
+    element.querySelector('.card')!.addEventListener('click', cardClicked);
+
+    const heart = element.querySelector<HTMLButtonElement>('.card__save')!;
+    expect(heart.getAttribute('aria-pressed')).toBe('false');
+    heart.click();
+    await fixture.whenStable();
+
+    expect(saved.toggle).toHaveBeenCalledExactlyOnceWith(maya.id);
+    expect(cardClicked).not.toHaveBeenCalled();
+    expect(router.url).toBe(initialUrl);
+  });
+
   it('shows the placeholder after an image error', async () => {
+    await render();
     const image = element.querySelector('img')!;
     image.dispatchEvent(new Event('error'));
     await fixture.whenStable();
@@ -67,6 +105,7 @@ describe('StudentCard', () => {
   });
 
   it('updates the details and retries a new portrait after a previous failure', async () => {
+    await render();
     element.querySelector('img')!.dispatchEvent(new Event('error'));
     await fixture.whenStable();
     fixture.componentRef.setInput('student', {
